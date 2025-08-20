@@ -1,8 +1,15 @@
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using ElevatorSimulator.Services;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Logging
+builder.Logging.ClearProviders();  
+builder.Logging.AddConsole();     
+builder.Logging.AddDebug();
+builder.Logging.AddFile("Logs/elevator-log-{Date}.txt");
 
 // Register your custom service
 builder.Services.AddSingleton<ElevatorSimulationService>();
