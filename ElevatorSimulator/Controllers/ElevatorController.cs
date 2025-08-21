@@ -7,15 +7,24 @@ namespace ElevatorSimulator.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ElevatorController(ElevatorSimulationService sim, ILogger<ElevatorController> logger) : ControllerBase
+public class ElevatorController : ControllerBase
 {
+    private readonly IElevatorSimulationService _service;
+    private readonly ILogger<ElevatorController> _logger;
+
+    public ElevatorController(IElevatorSimulationService service, ILogger<ElevatorController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
-        logger.LogInformation("Fetching elevator status at {Time}", DateTime.UtcNow);
+        _logger.LogInformation("Fetching elevator status at {Time}", DateTime.UtcNow);
 
-        var status = sim.GetStatus();
-        logger.LogDebug("Status retrieved: {@Status}", status);
+        var status = _service.GetStatus();
+        _logger.LogDebug("Status retrieved: {@Status}", status);
 
         return Ok(status);
     }
@@ -23,46 +32,50 @@ public class ElevatorController(ElevatorSimulationService sim, ILogger<ElevatorC
     [HttpPost("request")]
     public IActionResult RequestRide([FromBody] RideRequest req)
     {
-        logger.LogInformation("Ride request received at {Time}: {@Request}", DateTime.UtcNow, req);
+        _logger.LogInformation("Ride request received at {Time}: {@Request}", DateTime.UtcNow, req);
 
         try
         {
-            sim.RequestRide(req);
-            logger.LogInformation("Ride successfully assigned to request {@Request}", req);
+            _service.RequestRide(req);
+            _logger.LogInformation("Ride successfully assigned to request {@Request}", req);
 
             return Ok(new { message = "Ride assigned" });
         }
         catch (SimulationNotRunningException ex)
         {
-            logger.LogWarning(ex, "Simulation not running when request was made: {@Request}", req);
+            _logger.LogWarning(ex, "Simulation not running when request was made: {@Request}", req);
             return BadRequest(ex.Message);
         }
         catch (CarBusyException ex)
         {
-            logger.LogError(ex, "Elevator busy for request: {@Request}", req);
+            _logger.LogError(ex, "Elevator busy for request: {@Request}", req);
             return Conflict(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
     [HttpPost("start")]
     public IActionResult Start()
     {
-        logger.LogInformation("Starting elevator simulation at {Time}", DateTime.UtcNow);
+        _logger.LogInformation("Starting elevator simulation at {Time}", DateTime.UtcNow);
 
-        sim.StartSimulation();
+        _service.StartSimulation();
 
-        logger.LogInformation("Simulation started successfully");
+        _logger.LogInformation("Simulation started successfully");
         return Ok(new { message = "Simulation started" });
     }
 
     [HttpPost("stop")]
     public IActionResult Stop()
     {
-        logger.LogInformation("Stopping elevator simulation at {Time}", DateTime.UtcNow);
+        _logger.LogInformation("Stopping elevator simulation at {Time}", DateTime.UtcNow);
 
-        sim.StopSimulation();
+        _service.StopSimulation();
 
-        logger.LogInformation("Simulation stopped successfully");
+        _logger.LogInformation("Simulation stopped successfully");
         return Ok(new { message = "Simulation stopped" });
     }
 }

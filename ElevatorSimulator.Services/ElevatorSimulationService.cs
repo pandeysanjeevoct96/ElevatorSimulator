@@ -4,13 +4,14 @@ using Microsoft.Extensions.Logging;
 
 namespace ElevatorSimulator.Services;
 
-public class ElevatorSimulationService : IDisposable
+public class ElevatorSimulationService : IElevatorSimulationService, IDisposable
 {
     private readonly List<Elevator> _elevators = [];
     private readonly Lock _lock = new();
     private Timer? _timer;
     private readonly int _tickMs;
     private readonly ILogger<ElevatorSimulationService> _logger;
+    private bool _isRunning;
 
     public ElevatorSimulationService(ILogger<ElevatorSimulationService> logger, int elevatorCount = 4, int tickMs = 1000)
     {
@@ -34,6 +35,7 @@ public class ElevatorSimulationService : IDisposable
         }
 
         _logger.LogInformation("Starting elevator simulation with {Count} elevators", _elevators.Count);
+        _isRunning = true;
 
 
         _timer = new Timer(_ =>
@@ -71,6 +73,7 @@ public class ElevatorSimulationService : IDisposable
         }
 
         _logger.LogInformation("Stopping elevator simulation...");
+        _isRunning = false;
         _timer.Dispose();
         _timer = null;
     }
@@ -92,7 +95,7 @@ public class ElevatorSimulationService : IDisposable
             throw new ArgumentOutOfRangeException(nameof(request.DestinationFloor), "Destination floor must be between 1 and 10");
 
         if (request.PickupFloor == request.DestinationFloor)
-            throw new ArgumentOutOfRangeException(nameof(request), "Pickup and destination cannot be the same");
+            throw new ArgumentException("start and end floors must be different");
 
         lock (_lock)
         {
@@ -121,6 +124,9 @@ public class ElevatorSimulationService : IDisposable
 
     public List<ElevatorStatus> GetStatus()
     {
+        if (!_isRunning)
+            return new List<ElevatorStatus>();
+
         lock (_lock)
         {
             var statusList = _elevators.Select(e => new ElevatorStatus
